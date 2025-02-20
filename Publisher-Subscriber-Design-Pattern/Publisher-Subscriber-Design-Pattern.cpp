@@ -50,7 +50,7 @@ public:
 };
 
 int main() {
-    //MySubscriber s; 
+    //MySubscriber s; // Even if subscriber outlives the publisher, no crashes happen
     {
         Publisher p;
         p.subscribe<MyEvents::A>([]() { std::cout << "Test lambda2" << std::endl; });
@@ -65,16 +65,5 @@ int main() {
         p.emit<MyEvents::A>();
         p.emit<MyEvents::B>(1);
     }
-    //MyPublisher pub;
-    //std::shared_ptr<MySubscriber> sub = std::make_shared<MySubscriber>();
-    //
-    //// The subscriber registers itself with the publisher.
-    //pub.subscribe(sub);
-    //
-    //// Now the publisher can emit events.
-    //pub.emit<Events::A>();                 // calls sub.handleA()
-    //pub.emit<Events::B>(42);               // calls sub.handleB(42)
-    //pub.emit<Events::C>(7, std::string("hello"), std::vector<bool>{ true, false, true }); // calls sub.handleC(7, "hello", vector<bool>{...})
-
     return 0;
 }
