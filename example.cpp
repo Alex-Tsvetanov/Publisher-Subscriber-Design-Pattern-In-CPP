@@ -5,6 +5,8 @@
 // USAGE
 using namespace pubsub;
 
+// define your events with their respective types
+// as constexpr
 struct MyEvents
 {
     static constexpr auto A = Event<void()>();
@@ -12,19 +14,21 @@ struct MyEvents
     static constexpr auto C = Event<void(int, std::string, std::vector<bool>)>();
 };
 
+// optionally define classes for your subscribers
+// to be able to control their lifespan
 class MySubscriber : public Subscriber
 {
 public:
     MySubscriber() { }
     ~MySubscriber() {
-        unsubscribe_from_all(); // required
+        unsubscribe_from_all(); // required to unbind your instance
     }
     void subscribe_to(Publisher& p)
     {
         p.subscribe<MyEvents::A>(this, &MySubscriber::handleEventA);
         p.subscribe<MyEvents::B>(this, &MySubscriber::handleEventB);
         p.subscribe<MyEvents::C>(this, &MySubscriber::handleEventC);
-        Subscriber::subscribe_to(p); // required
+        Subscriber::subscribe_to(p); // required to know about this binding
     }
     void unsubscribe_from(Publisher& p)
     {
@@ -50,7 +54,7 @@ public:
 };
 
 int main() {
-    //MySubscriber s; // Even if subscriber outlives the publisher, no crashes happen
+    //MySubscriber s; // Even if subscriber outlives the publisher, no memory leaks happen
     {
         Publisher p;
         p.subscribe<MyEvents::A>([]() { std::cout << "Test lambda2" << std::endl; });
