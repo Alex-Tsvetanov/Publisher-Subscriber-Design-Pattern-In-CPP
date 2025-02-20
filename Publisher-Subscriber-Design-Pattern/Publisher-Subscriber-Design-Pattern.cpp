@@ -1,70 +1,70 @@
 ﻿#include <iostream>
-#include <functional>
-#include <vector>
-#include <string>
-#include <initializer_list>
-#include <list>
-#include <memory>
-#include <unordered_map>
+// Library
+#include "pubsub.h"
 
-template<auto Id>
-struct counter {
-    using tag = counter;
-
-    struct generator {
-        friend consteval auto is_defined(tag)
-        {
-            return true;
-        }
-    };
-    friend consteval auto is_defined(tag);
-
-    template<typename Tag = tag, auto = is_defined(Tag{}) >
-    static consteval auto exists(auto)
-    {
-        return true;
-    }
-
-    static consteval auto exists(...)
-    {
-        return generator(), false;
-    }
-};
-
-template<auto Id = int{}, typename = decltype([] {}) >
-consteval auto unique_id() {
-    if constexpr (not counter<Id>::exists(Id)) return Id;
-    else return unique_id<Id + 1>();
-}
-
-template<typename handler_t>
-struct Event
-{
-    using func_t = handler_t;
-    size_t id;
-
-    constexpr Event() {
-        id = unique_id();
-    }
-};
+// USAGE
+using namespace pubsub;
 
 struct MyEvents
 {
-    static constexpr auto A = Event<void(*)()>();
-    static constexpr auto B = Event<void(*)(int)>();
-    static constexpr auto C = Event<void(*)(int, std::string, std::vector<bool>)>();
+    static constexpr auto A = Event<void()>();
+    static constexpr auto B = Event<void(int)>();
+    static constexpr auto C = Event<void(int, std::string, std::vector<bool>)>();
 };
 
-template<auto event>
-void test()
+class MySubscriber : public Subscriber
 {
-    std::cout << event.id << " " << typeid(decltype(event)::func_t).name() << std::endl;
-}
+public:
+    MySubscriber() { }
+    ~MySubscriber() {
+        unsubscribe_from_all(); // required
+    }
+    void subscribe_to(Publisher& p)
+    {
+        p.subscribe<MyEvents::A>(this, &MySubscriber::handleEventA);
+        p.subscribe<MyEvents::B>(this, &MySubscriber::handleEventB);
+        p.subscribe<MyEvents::C>(this, &MySubscriber::handleEventC);
+        Subscriber::subscribe_to(p); // required
+    }
+    void unsubscribe_from(Publisher& p)
+    {
+        p.unsubscribe<MyEvents::A>(this);
+        p.unsubscribe<MyEvents::B>(this);
+        p.unsubscribe<MyEvents::C>(this);
+    }
+
+    void handleEventA()
+    {
+        std::cout << "Subscriber is handling event A" << std::endl;
+    }
+
+    void handleEventB(int a)
+    {
+        std::cout << "Subscriber is handling event B for " << a << std::endl;
+    }
+
+    void handleEventC(int a, std::string b, std::vector<bool> c)
+    {
+        std::cout << "Subscriber is handling event C for " << a << " " << b << " " << c.size() << std::endl;
+    }
+};
 
 int main() {
-    test<MyEvents::A>();
-    test<MyEvents::B>();
-    test<MyEvents::C>();
+    //MySubscriber s; 
+    {
+        Publisher p;
+        p.subscribe<MyEvents::A>([]() { std::cout << "Test lambda2" << std::endl; });
+        p.subscribe<MyEvents::A>([]() { std::cout << "Test lambda3" << std::endl; });
+        p.emit<MyEvents::A>();
+        {
+            MySubscriber s;
+            s.subscribe_to(p);
+            p.emit<MyEvents::A>();
+            p.emit<MyEvents::B>(1);
+        }
+        p.emit<MyEvents::A>();
+        p.emit<MyEvents::B>(1);
+    }
     //MyPublisher pub;
     //std::shared_ptr<MySubscriber> sub = std::make_shared<MySubscriber>();
     //
