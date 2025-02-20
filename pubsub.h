@@ -75,7 +75,7 @@ namespace pubsub {
         {
             function_type f = [obj, mem_fn_ptr](Args... args) noexcept -> void {
                 ((*obj).*mem_fn_ptr)(args...);
-                };
+            };
             ptrs[obj] = callbacks.insert(callbacks.end(), f);
         }
 
