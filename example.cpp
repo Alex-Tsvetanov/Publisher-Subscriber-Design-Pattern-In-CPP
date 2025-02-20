@@ -54,6 +54,9 @@ public:
 };
 
 int main() {
+    static_assert(decltype(MyEvents::A)::id == 0);
+    static_assert(decltype(MyEvents::B)::id == 1);
+    static_assert(decltype(MyEvents::C)::id == 2);
     //MySubscriber s; // Even if subscriber outlives the publisher, no memory leaks happen
     {
         Publisher p;

@@ -3,33 +3,36 @@
 #include <memory>
 #include <list>
 #include <unordered_map>
+#include <concepts>
+#include <type_traits>
+
 namespace {
     template<size_t Id>
     struct counter {
         using tag = counter;
 
         struct generator {
-            friend consteval auto is_defined(tag)
+            friend constexpr bool is_defined(tag) // The line that might cause a warning
             {
                 return true;
             }
         };
-        friend consteval auto is_defined(tag);
+        friend constexpr bool is_defined(tag);
 
-        template<typename Tag = tag, auto = is_defined(Tag{}) >
-        static consteval auto exists(auto)
+        template<typename Tag = tag, bool = is_defined(Tag{}) >
+        static constexpr bool exists(auto)
         {
             return true;
         }
 
-        static consteval auto exists(...)
+        static constexpr bool exists(...)
         {
             return generator(), false;
         }
     };
 
     template<size_t Id = 0, typename = decltype([] {}) >
-    consteval size_t unique_id() {
+    constexpr size_t unique_id() {
         if constexpr (not counter<Id>::exists(Id)) return Id;
         else return unique_id < Id + 1, decltype([] {}) > ();
     }
@@ -46,13 +49,13 @@ namespace pubsub {
         constexpr Event() { }
     };
 
-    template<auto Event>
+    template <typename EventT>
     concept IsEvent = requires {
-        typename decltype(Event)::func_t;
-        //requires std::same_as<decltype(decltype(Event)::id), size_t>;
+        typename EventT::func_t; // Check for func_t type alias
+        { EventT::id } -> std::convertible_to<size_t>; // Check for id
     };
 
-    template<auto Event> requires (IsEvent<Event>)
+    template<auto Event> requires (IsEvent<decltype(Event)>)
         class EventHandler
     {
         using function_type = std::function<typename decltype(Event)::func_t>;
@@ -104,7 +107,7 @@ namespace pubsub {
                 free(x.second);
             }
         }
-        template<auto Event> requires (IsEvent<Event>)
+        template<auto Event> requires (IsEvent<decltype(Event)>)
             void subscribe(std::function<typename decltype(Event)::func_t> f)
         {
             if (!events.contains(decltype(Event)::id))
@@ -112,7 +115,7 @@ namespace pubsub {
             reinterpret_cast<EventHandler<Event>*>(events[decltype(Event)::id])->subscribe(f);
         }
 
-        template<auto Event, typename C, typename... Args> requires (IsEvent<Event>)
+        template<auto Event, typename C, typename... Args> requires (IsEvent<decltype(Event)>)
             void subscribe(C* obj, void (C::* mem_fn)(Args...))
         {
             if (!events.contains(decltype(Event)::id))
@@ -120,13 +123,13 @@ namespace pubsub {
             reinterpret_cast<EventHandler<Event>*>(events[decltype(Event)::id])->subscribe(obj, mem_fn);
         }
 
-        template<auto Event> requires (IsEvent<Event>)
+        template<auto Event> requires (IsEvent<decltype(Event)>)
             void emit(auto... args)
         {
             reinterpret_cast<EventHandler<Event>*>(events[decltype(Event)::id])->emit(args...);
         }
 
-        template<auto Event, typename C> requires (IsEvent<Event>)
+        template<auto Event, typename C> requires (IsEvent<decltype(Event)>)
             void unsubscribe(C* obj)
         {
             if (!events.contains(decltype(Event)::id))
